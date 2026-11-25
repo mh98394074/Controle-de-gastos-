@@ -1,10 +1,157 @@
-Data;Descrição;Categoria;Grupo;Tipo;Pagamento;Valor (R$)
-Dez/Dia 5;Fatura Mercado Pago;Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;679,93
-Dez/Dia 5;Fatura Caixa;Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;567,75
-Dez/Dia 5;Fatura Nubank;Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;363,63
-Dez/Dia 5;Fatura Itaú;Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;337,55
-Dez/Dia 5;Ajuda em casa;Moradia;Essencial;Fixo;Pix;450,00
-Dez/Dia 20;Fatura PicPay (zerada);Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;0,00
-Dez/Dia 20;Fatura Neon;Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;271,14
-Dez/Dia 20;Ajuda da gasolina;Transporte;Essencial;Fixo;Pix;150,00
-[A CONFIRMAR];Faturas da esposa (consolidado);Dívidas e Parcelamentos;Meta/Dívida;Variável;Crédito;1600,00
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Financeiro Inteligente</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #0f172a;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+        body { font-family: system-ui, -apple-system, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 16px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        h1 { font-size: 1.5rem; margin: 0; }
+        .btn { background: var(--primary); color: white; border: none; padding: 10px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-block; }
+        .card { background: var(--card); padding: 16px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 16px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .text-sm { font-size: 0.875rem; color: #64748b; }
+        .text-lg { font-size: 1.25rem; font-weight: 700; margin-top: 4px; }
+        .text-danger { color: var(--danger); }
+        .text-success { color: var(--success); }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.875rem; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #f1f5f9; }
+        th { background-color: #f8fafc; }
+        .badge { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; }
+        .badge-essencial { background: #dbeafe; color: #1e40af; }
+        .badge-desejo { background: #fef3c7; color: #92400e; }
+        .badge-meta { background: #fee2e2; color: #991b1b; }
+        .progress-container { height: 12px; background: #e2e8f0; border-radius: 6px; overflow: hidden; margin: 8px 0; }
+        .progress-bar { height: 100%; border-radius: 6px; transition: width 0.3s; }
+        textarea { width: 100%; height: 100px; margin-top: 10px; padding: 8px; border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box; font-family: monospace; font-size: 0.8 \`.replace(/\\./g, '')), 10);
+            
+            let totalGasto = 0;
+            const categoriasMap = {};
+            const gruposMap = { 'Essencial': 0, 'Desejo': 0, 'Meta/Dívida': 0 };
+            
+            const tbody = document.getElementById('lancamentos-body');
+            tbody.innerHTML = '';
+            
+            lancamentos.forEach((item, index) => {
+                totalGasto += item.valor;
+                categoriasMap[item.categoria] = (categoriasMap[item.categoria] || 0) + item.valor;
+                gruposMap[item.grupo] = (gruposMap[item.grupo] || 0) + item.valor;
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${index + 1}</td>
+                    <td>${item.data}</td>
+                    <td>${item.descricao}</td>
+                    <td>${item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            const rendaTotal = 2700;
+            const comprometimento = (totalGasto / rendaTotal) * 100;
+            const saldo = rendaTotal - totalGasto;
+            
+            document.getElementById('total-gasto').textContent = `R$ ${totalGasto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            const compElem = document.getElementById('comprometimento');
+            compElem.textContent = `${comprometimento.toFixed(1)}%`;
+            if (comprometimento > 100) compElem.className = 'text-lg text-danger';
+            
+            const saldoElem = document.getElementById('saldo-restante');
+             saldoElem.textContent = `R$ ${saldo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            saldoElem.className = `text-lg ${saldo < 0 ? 'text-danger' : 'text-success'}`;
+            
+            updateBars(gruposMap, totalGasto);
+            updateChart(categoriasMap);
+        }
+
+        function updateBars(obj, total) {
+            for (const [key, val] of Object.entries(obj)) {
+                const el = document.getElementById(`bar-${key}`);
+                const pct = total > 0 ? (val / total) * 100 : 0;
+                el.style.width = `${pct}%`;
+                document.getElementById(`val-${key}`).textContent = `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+            }
+        }
+
+        let myChart = null;
+        function updateChart(map) {
+            const ctx = document.getElementById('catChart').getContext('2d');
+            if (myChart) myChart.destroy();
+            
+            const labels = Object.keys(map);
+            const data = Object.values(map);
+            
+            myChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe']
+                    }]
+                },
+                options: { plugins: { legend: { position: 'bottom' } }, responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function processDataString(str) {
+            const lines = str.trim().split('\n');
+            const result = [];
+            for (let i = 1; i < lines.length; i++) {
+                const parts = lines[i].split(';');
+                if (parts.length >= 8) {
+                    result.push({
+                        data: parts[1].trim(),
+                        descricao: parts[2].trim(),
+                        categoria: parts[3].trim(),
+                        grupo: parts[4].trim(),
+                        valor: parseMoney(parts[7])
+                    });
+                }
+            }
+            return result;
+        }
+
+        function applyUpdate() {
+            const input = document.getElementById('csv-input').value;
+            const mode = document.getElementById('mode-select').value;
+            try {
+                const parsed = processDataString(input);
+                if (parsed.length === 0) throw new Error("Dados inválidos");
+                
+                if (mode === 'replace') {
+                    lancamentos = parsed;
+                } else {
+                    lancamentos = [...lancamentos, ...parsed];
+                }
+                saveAndRender();
+                alert("App atualizado com sucesso!");
+            } catch (e) {
+                alert("Erro ao processar dados. Cole exatamente o formato CSV gerado pelo assistente.");
+            }
+        }
+
+        function parseMoney(valStr) {
+            if (!valStr) return 0;
+            const cleaned = valStr.replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
+            const num = parseFloat(cleaned);
+            return isNaN(num) ? 0 : num;
+        }
+
+        saveAndRender();
+    </script>
+</body>
+                  </html>
+      
