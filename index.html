@@ -2,127 +2,47 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Financeiro</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Controle Simples</title>
     <style>
-        body { font-family: sans-serif; padding: 16px; background: #f4f4f9; color: #333; }
-        .card { background: white; padding: 16px; margin-bottom: 12px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-        .text-lg { font-size: 1.25rem; font-weight: bold; }
-        .text-danger { color: red; }
-        .text-success { color: green; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { border-bottom: 1px solid #ddd; padding: 8px; text-align: left; font-size: 0.85rem; }
-        textarea { width: 100%; height: 80px; margin-top: 8px; font-family: monospace; }
-        button { background: #0070f3; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin-top: 8px; }
-        .progress { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin: 4px 0 12px 0; }
-        .bar { height: 100%; width: 0%; }
+        body { font-family: sans-serif; padding: 20px; background: #f4f4f9; }
+        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; }
+        h2 { margin: 0 0 10px 0; }
     </style>
 </head>
 <body>
-    <div style="max-width: 500px; margin: 0 auto;">
-        <h3>Painel Financeiro Conselheiro</h3>
-        <div class="grid">
-            <div class="card"><div>Total Gasto</div><div id="total-gasto" class="text-lg">R$ 0,00</div></div>
-            <div class="card"><div>Saldo Restante</div><div id="saldo-restante" class="text-lg">R$ 0,00</div></div>
+    <div style="max-width: 400px; margin: 0 auto;">
+        <div class="card" style="background: #00c853; color: white;">
+            <h2>Saldo Geral</h2>
+            <h1 id="saldo">R$ 0,00</h1>
         </div>
         <div class="card">
-            <div>Distribuição 50-30-20</div>
-            <div style="font-size:0.8rem; margin-top:8px;">Essencial</div>
-            <div class="progress"><div id="bar-Essencial" class="bar" style="background:#2563eb;"></div></div>
-            <div style="font-size:0.8rem;">Desejo</div>
-            <div class="progress"><div id="bar-Desejo" class="bar" style="background:#f59e0b;"></div></div>
-            <div style="font-size:0.8rem;">Meta/Dívida</div>
-            <div class="progress"><div id="bar-Meta/Dívida" class="bar" style="background:#ef4444;"></div></div>
+            <h2>Saldos Contas</h2>
+            <label>Itaú: <input type="number" id="itau" value="2000" oninput="calc()"></label>
+            <label>Next: <input type="number" id="next" value="1500" oninput="calc()"></label>
+            <label>BB: <input type="number" id="bb" value="1000" oninput="calc()"></label>
         </div>
         <div class="card">
-            <canvas id="catChart" height="200"></canvas>
-        </div>
-        <div class="card">
-            <h4>Atualizar via Assistente</h4>
-            <textarea id="csv-input" placeholder="Cole o CSV aqui..."></textarea>
-            <button onclick="applyUpdate()">Atualizar Painel</button>
-        </div>
-        <div class="card">
-            <h4>Lançamentos</h4>
-            <table>
-                <thead><tr><th>#</th><th>Data</th><th>Desc</th><th>Valor</th></tr></thead>
-                <tbody id="lancamentos-body"></tbody>
-            </table>
+            <h2>Gastos</h2>
+            <label>Essencial: <input type="number" id="essencial" value="500" oninput="calc()"></label>
+            <label>Desejo: <input type="number" id="desejo" value="300" oninput="calc()"></label>
         </div>
     </div>
     <script>
-        let lancamentos = [
-            {data: 'Dez/Dia 5', descricao: 'Fatura Mercado Pago', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 679.93},
-            {data: 'Dez/Dia 5', descricao: 'Fatura Caixa', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 567.75},
-            {data: 'Dez/Dia 5', descricao: 'Fatura Nubank', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 363.63},
-            {data: 'Dez/Dia 5', descricao: 'Fatura Itaú', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 337.55},
-            {data: 'Dez/Dia 5', descricao: 'Ajuda em casa', categoria: 'Moradia', grupo: 'Essencial', valor: 450.00},
-            {data: 'Dez/Dia 20', descricao: 'Fatura PicPay (zerada)', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 0.00},
-            {data: 'Dez/Dia 20', descricao: 'Fatura Neon', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 271.14},
-            {data: 'Dez/Dia 20', descricao: 'Ajuda da gasolina', categoria: 'Transporte', grupo: 'Essencial', valor: 150.00},
-            {data: '[A CONFIRMAR]', descricao: 'Faturas da esposa (consolidado)', categoria: 'Dívidas e Parcelamentos', grupo: 'Meta/Dívida', valor: 1600.00}
-        ];
-
-        let myChart = null;
-
-        function updateUI() {
-            let total = 0;
-            const cats = {};
-            const grupos = {'Essencial':0, 'Desejo':0, 'Meta/Dívida':0};
-            const tbody = document.getElementById('lancamentos-body');
-            tbody.innerHTML = '';
-
-            lancamentos.forEach((l, i) => {
-                total += l.valor;
-                cats[l.categoria] = (cats[l.categoria] || 0) + l.valor;
-                grupos[l.grupo] = (grupos[l.grupo] || 0) + l.valor;
-                tbody.innerHTML += `<tr><td>${i+1}</td><td>${l.data}</td><td>${l.descricao}</td><td>R$ ${l.valor.toFixed(2)}</td></tr>`;
-            });
-
-            document.getElementById('total-gasto').innerText = `R$ ${total.toFixed(2)}`;
-            const saldo = 2700 - total;
-            const saldoEl = document.getElementById('saldo-restante');
-            saldoEl.innerText = `R$ ${saldo.toFixed(2)}`;
-            saldoEl.className = 'text-lg ' + (saldo < 0 ? 'text-danger' : 'text-success');
-
-            for (const g in grupos) {
-                const pct = total > 0 ? (grupos[g]/total)*100 : 0;
-                document.getElementById(`bar-${g}`).style.width = `${pct}%`;
-            }
-
-            const ctx = document.getElementById('catChart').getContext('2d');
-            if(myChart) myChart.destroy();
-            myChart = new Chart(ctx, {
-                type: 'pie',
-                data: { labels: Object.keys(cats), datasets: [{ data: Object.values(cats), backgroundColor: ['#0070f3', '#50e3c2', '#f5a623', '#d0021b'] }] },
-                options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
-            });
+        function calc() {
+            const itau = parseFloat(document.getElementById('itau').value) || 0;
+            const next = parseFloat(document.getElementById('next').value) || 0;
+            const bb = parseFloat(document.getElementById('bb').value) || 0;
+            const ess = parseFloat(document.getElementById('essencial').value) || 0;
+            const des = parseFloat(document.getElementById('desejo').value) || 0;
+            
+            const totalSaldo = itau + next + bb;
+            const totalGasto = ess + des;
+            const saldoFinal = totalSaldo - totalGasto;
+            
+            document.getElementById('saldo').innerText = 'R$ ' + saldoFinal.toFixed(2).replace('.', ',');
         }
-
-        function applyUpdate() {
-            const raw = document.getElementById('csv-input').value.trim();
-            if(!raw) return;
-            const lines = raw.split('\n');
-            const newL = [];
-            for(let i=1; i<lines.length; i++) {
-                const p = lines[i].split(';');
-                if(p.length >= 8) {
-                    newL.push({
-                        data: p[1], descricao: p[2], categoria: p[3], grupo: p[4],
-                        valor: parseFloat(p[7].replace('R$','').replace('.','').replace(',','.')) || 0
-                    });
-                }
-            }
-            if(newL.length > 0) {
-                lancamentos = newL;
-                updateUI();
-                alert('Atualizado!');
-            }
-        }
-
-        updateUI();
+        calc();
     </script>
 </body>
 </html>
